@@ -1,0 +1,50 @@
+name: Deploy to WordPress.org
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch: # Allows manual triggering if needed
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '7.4'
+          tools: composer:v2
+
+      - name: Install Production Composer Dependencies
+        run: |
+          composer install --no-dev --optimize-autoloader --prefer-dist --no-interaction
+
+      - name: Compile Allowlist Files into Deploy Directory
+        run: |
+          mkdir dist
+          
+          # Individual files to include
+          cp composer.json dist/
+          cp composer.lock dist/
+          cp readme.txt dist/
+          cp LICENSE dist/
+          cp kopo-kopo-for-woocommerce.php dist/
+          cp uninstall.php dist/
+          
+          # Directoriesto include
+          cp -r assets/ dist/
+          cp -r build/ dist/
+          cp -r images/ dist/
+          cp -r includes/ dist/
+          cp -r src/ dist/
+          cp -r vendor/ dist/
+
+      - name: WordPress Plugin Deploy
+        uses: 10up/action-wordpress-plugin-deploy@stable
+        env:
+          SVN_USERNAME: ${{ secrets.SVN_USERNAME }}
+          SVN_PASSWORD: ${{ secrets.SVN_PASSWORD }}
+          BUILD_DIR: dist/
